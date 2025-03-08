@@ -48,7 +48,6 @@ def main(args):
         print(f' {epoch}/{args.epochs} ----- [{time_string()}] [Need: {convert_secs2time(epoch_time.avg * (args.epochs - epoch))}]')
         epoch_time.update(time.time() - start_time)
         start_time = time.time()
-
         train(args, model, epoch, train_loader, optimizer)
         auc_result = test(args, model, test_loader, labels)
 
@@ -106,7 +105,6 @@ def test(args, model, test_loader, labels):
     for i, (time_ecg, spectrogram_ecg) in tqdm(enumerate(test_loader)):
         instance_result = []
         time_length = time_ecg.shape[1]
-
         time_ecg = time_ecg.float().to(device) 
 
         # Apply masking in multiple patches
