@@ -48,6 +48,7 @@ def main(args):
         print(f' {epoch}/{args.epochs} ----- [{time_string()}] [Need: {convert_secs2time(epoch_time.avg * (args.epochs - epoch))}]')
         epoch_time.update(time.time() - start_time)
         start_time = time.time()
+
         train(args, model, epoch, train_loader, optimizer)
         auc_result = test(args, model, test_loader, labels)
 
@@ -67,6 +68,7 @@ def train(args, model, epoch, train_loader, optimizer):
         
         # Apply time-domain masking
         time_ecg = time_ecg.float().to(device)
+        bs, time_length, dim = time_ecg.shape
         mask_time = copy.deepcopy(time_ecg)
         mask = torch.zeros_like(time_ecg, dtype=torch.bool).to(device)
         patch_length = time_ecg.shape[1] // 100  
@@ -80,19 +82,19 @@ def train(args, model, epoch, train_loader, optimizer):
         mask = torch.zeros_like(spec_ecg, dtype=torch.bool).to(device)
         for j in random.sample(range(66), args.mask_ratio_spec):
             mask[:, :, j:j+1, :] = 1 
-        mask_spec = torch.mul(mask_spec, ~mask)
+        mask_spec = torch.mul(mask_spec, ~mask)  
+        (gen_time, time_var) = model(mask_time, mask_spec)   
+            
+        epsilon = 1e-10  
+        time_err =(gen_time - time_ecg) ** 2
 
-        # Forward pass
-        gen_time, time_var = model(mask_time, mask_spec)
-
-        # Loss computation
-        time_err = (gen_time - time_ecg) ** 2
-        loss = torch.mean(torch.exp(-time_var) * time_err) + torch.mean(time_var)
+        l_time = torch.mean(torch.exp(-time_var) * time_err + epsilon) + torch.mean(time_var)
+        loss = l_time
         
-        # Backpropagation
         loss.backward()
         optimizer.step()
-        total_losses.update(loss.item(), time_ecg.size(0))
+ 
+        total_losses.update(loss.item(), bs)
        
     print(f'Train Epoch: {epoch} Total Loss: {total_losses.avg:.6f}')
  
@@ -100,13 +102,13 @@ def test(args, model, test_loader, labels):
     torch.zero_grad = True
     model.eval()
     result = []
-
     
     for i, (time_ecg, spectrogram_ecg) in tqdm(enumerate(test_loader)):
         instance_result = []
         time_length = time_ecg.shape[1]
-        time_ecg = time_ecg.float().to(device) 
 
+        time_ecg = time_ecg.float().to(device) 
+        
         # Apply masking in multiple patches
         for j in range(100 // args.mask_ratio_time):
             mask_time = copy.deepcopy(time_ecg).float().to(device)
@@ -125,16 +127,22 @@ def test(args, model, test_loader, labels):
                 mask[:, :, cut_idx:cut_idx+1, :] = 1
             mask_spec = torch.mul(mask_spec, ~mask)
 
-            # Forward pass
-            gen_time, time_var = model(mask_time, mask_spec)
+ 
+            (gen_time, time_var) = model(mask_time, mask_spec)
+           
+            epsilon = 1e-10 # Small constant to avoid instability
 
-            # Compute loss
-            time_err = (gen_time - time_ecg) ** 2
-            loss = torch.mean(torch.exp(-time_var) * time_err).detach().cpu().numpy()
+
+            time_err =(gen_time - time_ecg) ** 2
+            l_time = torch.mean(torch.exp(-time_var) * time_err + epsilon) 
+            loss = l_time
+ 
+            loss = loss.detach().cpu().numpy()
             instance_result.append(loss)
-
-        # Compute anomaly scores
-        result.append(np.mean(instance_result))
+       
+        tmp_instance_result = np.asarray(instance_result)
+        result.append(tmp_instance_result.mean())
+ 
 
     scores = np.asarray(result)
     scores = (scores - scores.min()) / (scores.max() - scores.min())  # Normalize scores
