@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from utils import *
-from SparseAutoLib.modules import *
+from lib.modules import *
 
 class STAE(nn.Module):
     def __init__(self, enc_in):
