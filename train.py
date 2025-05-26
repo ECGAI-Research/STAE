@@ -184,7 +184,7 @@ def adjust_learning_rate(optimizer, init_lr, epoch, args):
  
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
-    parser = argparse.ArgumentParser(description='ECG Anomaly Detection based on Signal and Spectrogram Restoration')
+    parser = argparse.ArgumentParser(description='Training Sparse Temporal AutoEncoder for ECG Anomaly Detection')
     parser.add_argument('--data_path', type=str, default='data')
     parser.add_argument('--epochs', type=int, default=50, help='maximum training epochs')
     parser.add_argument('--dims', type=int, default=12, help='dimension of the input data')
