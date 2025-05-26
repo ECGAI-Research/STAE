@@ -6,83 +6,104 @@ import torch
 import math
 import numpy as np
 from tqdm import tqdm
-from utils import time_string, convert_secs2time, AverageMeter
-from SparseAutoLib.STAE import STAE
+from utils import time_string, convert_secs2time, AverageMeter, normalize
+from lib.STAE import STAE
 from dataloader import TrainSet, TestSet
 from sklearn.metrics import roc_auc_score
-import copy
+import copy 
 import warnings
-
+ 
 def main(args):
     if args.seed is None:
         args.seed = random.randint(1, 10000)
-    random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+    else:
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
        
     print("args: ", args)
-    
+   
     # Data loading
     kwargs = {'num_workers': 4, 'pin_memory': True} if use_cuda else {}
-    train_loader = torch.utils.data.DataLoader(TrainSet(folder=args.data_path), batch_size=args.batch_size, shuffle=True, **kwargs)
-    test_loader = torch.utils.data.DataLoader(TestSet(folder=args.data_path), batch_size=1, shuffle=False, **kwargs)
+ 
+    dset = TrainSet(folder=args.data_path)
+    train_loader = torch.utils.data.DataLoader(dset, batch_size=args.batch_size, shuffle=True, **kwargs)
+ 
+    dtset = TestSet(folder=args.data_path)
+    test_loader = torch.utils.data.DataLoader(dtset, batch_size=1, shuffle=False, **kwargs)
     labels = np.load(os.path.join(args.data_path, 'label.npy'))
+ 
+    # Model loading
 
     model = STAE(enc_in=args.dims).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+        
+    optimizer = torch.optim.AdamW(model.parameters() , lr=args.lr, weight_decay=1e-4)
+    
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total trainable parameters: {round(n_parameters * 1e-6, 2)} M")
 
+    
     if args.pth_path is not None:
         checkpoint = torch.load(args.pth_path)
         model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])   
-
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+       
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
-
-    # Training loop
-    old_auc_result = 0
-    epoch_time = AverageMeter()
+        
+     # Training loop
     start_time = time.time()
-    for epoch in range(args.epochs + 1):
+    epoch_time = AverageMeter()
+ 
+    old_auc_result = 0
+    for epoch in range(0, args.epochs + 1):
         adjust_learning_rate(optimizer, args.lr, epoch, args)
-        print(f' {epoch}/{args.epochs} ----- [{time_string()}] [Need: {convert_secs2time(epoch_time.avg * (args.epochs - epoch))}]')
+        need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (args.epochs - epoch))
+        need_time = '[Need: {:02d}:{:02d}:{:02d}]'.format(need_hour, need_mins, need_secs)
+        print(' {:3d}/{:3d} ----- [{:s}] {:s}'.format(epoch, args.epochs, time_string(), need_time))
         epoch_time.update(time.time() - start_time)
         start_time = time.time()
-
+ 
         train(args, model, epoch, train_loader, optimizer)
         auc_result = test(args, model, test_loader, labels)
-
-        # Save the model if AUC improves
         if auc_result > old_auc_result:
             old_auc_result = auc_result
-            if args.save_model:
-                torch.save({'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, os.path.join(args.save_path, 'STAE.pt'))
-
-    print("Final best AUC:", old_auc_result)
-
+            if args.save_model == 1:
+                torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()}, args.save_path + 'STAE.pt' )
+    print("Final best auc: ", old_auc_result)
+ 
+ 
 def train(args, model, epoch, train_loader, optimizer):
     model.train()
     total_losses = AverageMeter()
     for i, (time_ecg, spectrogram_ecg) in tqdm(enumerate(train_loader)):
         optimizer.zero_grad()
-        
         # Apply time-domain masking
-        time_ecg = time_ecg.float().to(device)
+        time_ecg = time_ecg.float().to(device)  #(32, 4800, 12)
         bs, time_length, dim = time_ecg.shape
-        mask_time = copy.deepcopy(time_ecg)
-        mask = torch.zeros_like(time_ecg, dtype=torch.bool).to(device)
-        patch_length = time_ecg.shape[1] // 100  
-        for j in random.sample(range(100), args.mask_ratio_time):
-            mask[:, j*patch_length:(j+1)*patch_length] = 1 
-        mask_time = torch.mul(mask_time, ~mask)
 
+        mask_time = copy.deepcopy(time_ecg)
+        mask = torch.zeros((bs,time_length,1), dtype=torch.bool).to(device)
+        patch_length = time_length // 100 #48
+        for j in random.sample(range(0,100), args.mask_ratio_time):
+            mask[:, j*patch_length:(j+1)*patch_length] = 1 #(32, 48, 1)
+        mask_time = torch.mul(mask_time, ~mask)
         # Apply spectrogram masking
-        spec_ecg = spectrogram_ecg.float().to(device)
+        spec_ecg = spectrogram_ecg.float().to(device) #(32, 63, 66, 12)
+        bs, freq_dim, time_dim, dim = spec_ecg.shape
         mask_spec = copy.deepcopy(spec_ecg)
-        mask = torch.zeros_like(spec_ecg, dtype=torch.bool).to(device)
-        for j in random.sample(range(66), args.mask_ratio_spec):
-            mask[:, :, j:j+1, :] = 1 
-        mask_spec = torch.mul(mask_spec, ~mask)  
+            
+        mask = torch.zeros((bs, freq_dim, time_dim, 1), dtype=torch.bool).to(device)
+        patch_length = 1
+        for j in random.sample(range(0,66), args.mask_ratio_spec):
+                mask[:, :, j*patch_length:(j+1)*patch_length, :] = 1 #(32, 63, 1, 1)
+        mask_spec = torch.mul(mask_spec, ~mask)
+           
         (gen_time, time_var) = model(mask_time, mask_spec)   
             
         epsilon = 1e-10  
@@ -90,49 +111,49 @@ def train(args, model, epoch, train_loader, optimizer):
 
         l_time = torch.mean(torch.exp(-time_var) * time_err + epsilon) + torch.mean(time_var)
         loss = l_time
-        
+
         loss.backward()
         optimizer.step()
  
         total_losses.update(loss.item(), bs)
        
-    print(f'Train Epoch: {epoch} Total Loss: {total_losses.avg:.6f}')
+    print(('Train Epoch: {} Total_Loss: {:.6f}'.format(epoch, total_losses.avg)))
  
 def test(args, model, test_loader, labels):
     torch.zero_grad = True
     model.eval()
     result = []
-    
     for i, (time_ecg, spectrogram_ecg) in tqdm(enumerate(test_loader)):
         instance_result = []
+       
         time_length = time_ecg.shape[1]
-
-        time_ecg = time_ecg.float().to(device) 
-        
-        # Apply masking in multiple patches
-        for j in range(100 // args.mask_ratio_time):
-            mask_time = copy.deepcopy(time_ecg).float().to(device)
-            mask = torch.zeros_like(time_ecg, dtype=torch.bool).to(device)
+ 
+        for j in range(100//args.mask_ratio_time):
+            # mask on time branch
+            patch_interval_time = 4800 // args.mask_ratio_time
+            time_ecg = time_ecg.float().to(device)
+            mask_time = copy.deepcopy(time_ecg)
+            mask = torch.zeros((1,time_length,1), dtype=torch.bool).to(device)
+           
             for k in range(args.mask_ratio_time):
-                cut_idx = 48*j + (4800 // args.mask_ratio_time)*k
-                mask[:, cut_idx:cut_idx+48] = 1
+                cut_idx = 48*j + patch_interval_time*k
+                mask[:,cut_idx:cut_idx+48] = 1
             mask_time = torch.mul(mask_time, ~mask)
-
-            # Spectrogram masking
+ 
+            patch_interval_spec = 66 // args.mask_ratio_spec
             spec_ecg = spectrogram_ecg.float().to(device)
+            bs, freq_dim, time_dim, dim = spec_ecg.shape
             mask_spec = copy.deepcopy(spec_ecg)
-            mask = torch.zeros_like(spec_ecg, dtype=torch.bool).to(device)
+                
+            mask = torch.zeros((bs, freq_dim, time_dim, 1), dtype=torch.bool).to(device)
             for k in range(args.mask_ratio_spec):
-                cut_idx = 1*j + (66 // args.mask_ratio_spec)*k
-                mask[:, :, cut_idx:cut_idx+1, :] = 1
+                cut_idx = 1*j + patch_interval_spec*k
+                mask[:, :, cut_idx:cut_idx+1] = 1
             mask_spec = torch.mul(mask_spec, ~mask)
-
  
             (gen_time, time_var) = model(mask_time, mask_spec)
            
             epsilon = 1e-10 # Small constant to avoid instability
-
-
             time_err =(gen_time - time_ecg) ** 2
             l_time = torch.mean(torch.exp(-time_var) * time_err + epsilon) 
             loss = l_time
@@ -143,37 +164,42 @@ def test(args, model, test_loader, labels):
         tmp_instance_result = np.asarray(instance_result)
         result.append(tmp_instance_result.mean())
  
-
     scores = np.asarray(result)
-    scores = (scores - scores.min()) / (scores.max() - scores.min())  # Normalize scores
-    auc_result = roc_auc_score(labels.astype(int), scores)
-    
-    print(f"AUC: {round(auc_result, 3)}")
+    test_labels = np.array(labels).astype(int)
+ 
+    max_anomaly_score = scores.max()
+    min_anomaly_score = scores.min()
+    scores = (scores - min_anomaly_score) / (max_anomaly_score - min_anomaly_score)
+ 
+    auc_result = roc_auc_score(test_labels, scores)
+ 
+    print(("AUC: ", round(auc_result, 3)))
     return auc_result
  
 def adjust_learning_rate(optimizer, init_lr, epoch, args):
-    """Cosine learning rate decay"""
+    """Decay the learning rate based on schedule"""
     cur_lr = init_lr * 0.5 * (1. + math.cos(math.pi * epoch / args.epochs))
     for param_group in optimizer.param_groups:
         param_group['lr'] = cur_lr
  
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
-    parser = argparse.ArgumentParser(description='Sparse Temporal AutoEncoder for ECG Anomaly Detection')
+    parser = argparse.ArgumentParser(description='ECG Anomaly Detection based on Signal and Spectrogram Restoration')
     parser.add_argument('--data_path', type=str, default='data')
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--dims', type=int, default=12)
-    parser.add_argument('--save_model', type=int, default=1)
+    parser.add_argument('--epochs', type=int, default=50, help='maximum training epochs')
+    parser.add_argument('--dims', type=int, default=12, help='dimension of the input data')
+    parser.add_argument('--save_model', type=int, default=1, help='0 for discard, 1 for save model')
     parser.add_argument('--save_path', type=str, default='ckpt/')
-    parser.add_argument('--mask_ratio_time', type=int, default=30)
-    parser.add_argument('--mask_ratio_spec', type=int, default=20)
+    parser.add_argument('--mask_ratio_time', type=int, default=30, help='mask ratio for self-restoration in time branch')
+    parser.add_argument('--mask_ratio_spec', type=int, default=20, help='mask ratio for self-restoration in spectrogram branch')
     parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--lr', type=float, default=5e-5)
-    parser.add_argument('--seed', type=int, default=668)
+    parser.add_argument('--lr', type=float, default=5e-5 , help='learning rate for optimizer')
+    parser.add_argument('--seed', type=int, default=668, help='manual seed')
     parser.add_argument("--gpu", type=str, default="2")
+    parser.add_argument("--spec", default=True)
     parser.add_argument("--pth_path", type=str, default=None)
     args = parser.parse_args()
     
     use_cuda = torch.cuda.is_available()
-    device = f"cuda:{args.gpu}" if use_cuda else 'cpu'
+    device = "cuda:" + args.gpu if use_cuda else 'cpu'
     main(args)
