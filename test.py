@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 from utils import normalize
 from dataloader import TestSet
-from sklearn.metrics import roc_auc_score  ,confusion_matrix  , roc_curve  , precision_recall_curve, accuracy_score , recall_score,f1_score , precision_score
+from sklearn.metrics import roc_auc_score, roc_curve  , precision_recall_curve, accuracy_score , recall_score,f1_score , precision_score
 import copy
 from lib.STAE import STAE
 import seaborn as sns
