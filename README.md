@@ -1,7 +1,7 @@
 <h1 align="center"> STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection</h1>
 
 ## Abstract
-<image src="figures/STAE_Arch.png">
+<image src="figures/STAE_Arch_New.png">
   
 Electrocardiogram (ECG) analysis is a fundamental tool for diagnosing various cardiac
 conditions; however, accurately distinguishing between normal and abnormal ECG signals
