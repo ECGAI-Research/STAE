@@ -23,6 +23,7 @@ The proposed method is evaluated on the PTB-XL dataset, where it achieves the hi
 </ul>
 
 
+```markdown
 ## Cite this work
 
 🖋️ If you find this code useful in your research, please cite:
