@@ -30,6 +30,7 @@ In this study, we propose a novel Sparse Temporal Autoencoder (STAE) for unsuper
   year={2026},
   publisher={MDPI}
 }
+```
 
 ## Datasets
 To assess the performance of our model, we conduct experiments using the PTB-XL dataset. The dataset preprocessing follows the approach outlined in <a href="https://github.com/UARK-AICV/TSRNet">TSRNet.</a> For further information, please refer to their repository.</a>
