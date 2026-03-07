@@ -1,8 +1,8 @@
-# STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection
+# STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection 
 
 ## Abstract
 <image src="figures/STAE_Arch_New.png">
-  
+
 Electrocardiogram (ECG) analysis is a fundamental tool for diagnosing various cardiac conditions; however, accurately distinguishing between normal and abnormal ECG signals remains challenging due to high inter-individual variability and the inherent complexity
 of ECG waveforms.
 In this study, we propose a novel Sparse Temporal Autoencoder (STAE) for unsupervised ECG anomaly detection that leverages Temporal Convolutional Networks (TCNs) to extract hierarchical features from both time-domain and frequency domain representations of ECG signals. Unlike traditional approaches requiring annotated abnormal samples, the proposed model is trained exclusively on normal ECG data, making
