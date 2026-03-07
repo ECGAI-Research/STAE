@@ -1,4 +1,4 @@
-<h1 align="center"> STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection</h1>
+# STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection
 
 ## Abstract
 <image src="figures/STAE_Arch_New.png">
