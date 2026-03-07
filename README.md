@@ -21,21 +21,11 @@ The proposed method is evaluated on the PTB-XL dataset, where it achieves the hi
   <li>PyWavelets</li>
   <li>Scikit-Learn</li>
 </ul>
-🖋️ If you find this code useful in your research, please cite:
-```@article{daci2026sparse,
-  title={Sparse Temporal AutoEncoder for ECG Anomaly Detection},
-  author={Daci, Radia and Taleb-Ahmed, Abdelmalik and Patrono, Luigi and Distante, Cosimo},
-  journal={Sensors},
-  volume={26},
-  number={5},
-  pages={1589},
-  year={2026},
-  publisher={MDPI}
-}```
+
 
 ## Cite this work
 
-If you find this code useful in your research, please cite:
+🖋️ If you find this code useful in your research, please cite:
 
 ```bibtex
 @article{daci2026sparse,
