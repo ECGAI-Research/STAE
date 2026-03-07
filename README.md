@@ -1,19 +1,27 @@
 # STAE: Sparse Temporal AutoEncoder for ECG Anomaly Detection
 
 ## Abstract
-![STAE Architecture](figures/STAE_Arch_New.png)
+<image src="figures/STAE_Arch_New.png">
   
-Electrocardiogram (ECG) analysis is a fundamental tool for diagnosing various cardiac conditions; however, accurately distinguishing between normal and abnormal ECG signals remains challenging due to high inter-individual variability and the inherent complexity of ECG waveforms.
-In this study, we propose a novel Sparse Temporal Autoencoder (STAE) for unsupervised ECG anomaly detection that leverages Temporal Convolutional Networks (TCNs) to extract hierarchical features from both time-domain and frequency domain representations of ECG signals...
-  
+Electrocardiogram (ECG) analysis is a fundamental tool for diagnosing various cardiac conditions; however, accurately distinguishing between normal and abnormal ECG signals remains challenging due to high inter-individual variability and the inherent complexity
+of ECG waveforms.
+In this study, we propose a novel Sparse Temporal Autoencoder (STAE) for unsupervised ECG anomaly detection that leverages Temporal Convolutional Networks (TCNs) to extract hierarchical features from both time-domain and frequency domain representations of ECG signals. Unlike traditional approaches requiring annotated abnormal samples, the proposed model is trained exclusively on normal ECG data, making
+it well-suited for real-world deployment. A STAE integrates a masked signal reconstruction strategy and a hybrid sparse attention mechanism combining sparse block and sparse strided attention to capture critical temporal and spectral patterns efficiently. 
+The proposed method is evaluated on the PTB-XL dataset, where it achieves the highest ROC-AUC of 0.872 among compared unsupervised methods while maintaining a low inference time of 0.009 s, demonstrating that STAE achieves state-of-the-art performance in ECG anomaly detection, highlighting its potential as a powerful tool for automated and intelligent ECG analysis.
+
+ 
+
 ## Required Libraries
-- Pytorch
-- Numpy
-- TQDM
-- SciPy
-- HeartPy
-- PyWavelets
-- Scikit-Learn
+<ul>
+  <li>Pytorch</li>
+  <li>Numpy</li>
+  <li>TQDM</li>
+  <li>SciPy</li>
+  <li>HeartPy</li>
+  <li>PyWavelets</li>
+  <li>Scikit-Learn</li>
+</ul>
+
 
 ## Cite this work
 
