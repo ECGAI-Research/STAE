@@ -37,7 +37,7 @@ The proposed method is evaluated on the PTB-XL dataset, where it achieves the hi
   pages={1589},
   year={2026},
   publisher={MDPI}
-}
+}```
 
 ## Datasets
 To assess the performance of our model, we conduct experiments using the PTB-XL dataset. The dataset preprocessing follows the approach outlined in <a href="https://github.com/UARK-AICV/TSRNet">TSRNet.</a> For further information, please refer to their repository.</a>
