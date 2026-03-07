@@ -33,6 +33,21 @@ The proposed method is evaluated on the PTB-XL dataset, where it achieves the hi
   publisher={MDPI}
 }```
 
+## Cite this work
+
+If you find this code useful in your research, please cite:
+
+```bibtex
+@article{daci2026sparse,
+  title={Sparse Temporal AutoEncoder for ECG Anomaly Detection},
+  author={Daci, Radia and Taleb-Ahmed, Abdelmalik and Patrono, Luigi and Distante, Cosimo},
+  journal={Sensors},
+  volume={26},
+  number={5},
+  pages={1589},
+  year={2026},
+  publisher={MDPI}
+}
 
 ## Datasets
 To assess the performance of our model, we conduct experiments using the PTB-XL dataset. The dataset preprocessing follows the approach outlined in <a href="https://github.com/UARK-AICV/TSRNet">TSRNet.</a> For further information, please refer to their repository.</a>
